@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build Universal DMG & Publish Release
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.tag }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Run unit tests
+        run: swift test
+
+      - name: Build Universal DMG
+        env:
+          TOKI_VERSION: ${{ steps.version.outputs.version }}
+          TOKI_ARCHS: "arm64 x86_64"
+        run: |
+          ./scripts/package-dmg.sh --icon ./assets/AppIcon.png
+          lipo -info dist/Toki.app/Contents/MacOS/Toki
+          lipo -info dist/Toki.app/Contents/Frameworks/libzstd.1.dylib
+          codesign --verify --deep --strict dist/Toki.app
+          cp dist/Toki.dmg "dist/Toki-${TOKI_VERSION}-universal.dmg"
+          (cd dist && shasum -a 256 "Toki-${TOKI_VERSION}-universal.dmg" > "Toki-${TOKI_VERSION}-universal.dmg.sha256")
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Toki ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          files: |
+            dist/Toki-${{ steps.version.outputs.version }}-universal.dmg
+            dist/Toki-${{ steps.version.outputs.version }}-universal.dmg.sha256

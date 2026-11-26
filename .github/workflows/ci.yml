@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    name: Test & Universal Build (macOS)
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inspect Swift toolchain
+        run: swift --version
+
+      - name: Run unit tests
+        run: swift test
+
+      - name: Build Universal Toki.app
+        run: ./scripts/package-app.sh --icon ./assets/AppIcon.png
+
+      - name: Verify Universal Binary & signature
+        run: |
+          lipo -info dist/Toki.app/Contents/MacOS/Toki | grep -q "arm64"
+          lipo -info dist/Toki.app/Contents/MacOS/Toki | grep -q "x86_64"
+          lipo -info dist/Toki.app/Contents/Frameworks/libzstd.1.dylib | grep -q "arm64"
+          lipo -info dist/Toki.app/Contents/Frameworks/libzstd.1.dylib | grep -q "x86_64"
+          codesign --verify --deep --strict dist/Toki.app
