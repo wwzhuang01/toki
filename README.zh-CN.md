@@ -132,6 +132,17 @@ swift build -c release
 - [ ] 每日 Token / 费用上限提醒
 - [ ] macOS 桌面小组件（`WidgetKit`）
 
+## 致谢
+
+- [T3 Code](https://github.com/pingdotgg/t3code)：感谢其在多服务商本地用量统计口径与配置兼容性上的参考与启发。
+- [Magpie](https://github.com/yetone/magpie)：感谢其在趋势图交互（`Token / 费用 / 请求` 切换与柱状图悬停浮层明细卡片）上的设计灵感。
+- [LiteLLM](https://github.com/BerriAI/litellm)：提供公开的模型价格表（`model_prices_and_context_window.json`），用于费用与缓存节省估算。
+- [zstd](https://github.com/facebook/zstd)：提供 `.jsonl.zst` 归档解压能力（BSD-3-Clause 协议，完整协议文件随应用包一同分发）。
+
+## 免责声明
+
+Toki 是独立的开源项目，与 Anthropic、OpenAI、Google、OpenCode 等官方无隶属、背书或赞助关系。文中提及的所有产品名称与商标均归各自所有者所有。
+
 ## 开源协议
 
 [MIT](LICENSE)

@@ -132,6 +132,17 @@ Useful build environment variables:
 - [ ] Daily token / budget threshold alerts
 - [ ] macOS Desktop Widgets (`WidgetKit`)
 
+## Acknowledgements
+
+- [T3 Code](https://github.com/pingdotgg/t3code) — inspiration for local multi-provider usage accounting semantics and configuration compatibility.
+- [Magpie](https://github.com/yetone/magpie) — inspiration for the interactive stacked trend chart (`Tokens / Cost / Requests`) and hover breakdown tooltip UX.
+- [LiteLLM](https://github.com/BerriAI/litellm) — public model pricing table (`model_prices_and_context_window.json`) used for cost and cache-savings estimation.
+- [zstd](https://github.com/facebook/zstd) — fast decompression library bundled for reading `.jsonl.zst` archives (BSD-3-Clause license included in the app bundle).
+
+## Disclaimer
+
+Toki is an independent, unofficial open-source project and is not affiliated with, endorsed by, or sponsored by Anthropic, OpenAI, Google, or OpenCode. All product names and trademarks belong to their respective owners.
+
 ## License
 
 [MIT](LICENSE)
