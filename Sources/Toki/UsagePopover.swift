@@ -189,7 +189,7 @@ struct UsagePopover: View {
             points.reduce(0) { $0 + $1.value(for: metric, currency: currency, cnyRate: cnyRate) }
         }
         let ticks = chartTicks(count: dates.count, days: summary.days)
-        let yMax = niceChartCeiling(slotTotals.max() ?? 0, metric: metric)
+        let yMax = niceChartCeiling(slotTotals.max() ?? 0, metric: metric, days: summary.days)
         let yTicks: [Double] = yMax > 0 ? [0, yMax / 2, yMax] : [0]
 
         return VStack(alignment: .leading, spacing: 8) {
@@ -220,7 +220,7 @@ struct UsagePopover: View {
                 .background(.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 7))
             }
 
-            trendChart(data, dates: dates, days: summary.days, metric: metric, yMax: yMax)
+            trendChart(data, slotTotals: slotTotals, dates: dates, days: summary.days, metric: metric, yMax: yMax)
             .chartXAxis {
                 AxisMarks(values: ticks) { value in
                     if let coordinate = value.as(Double.self), let slot = Int(exactly: coordinate),
@@ -274,7 +274,7 @@ struct UsagePopover: View {
                            let plotFrame = proxy.plotFrame,
                            let barX = proxy.position(forX: Double(slot)) {
                             let frame = geometry[plotFrame]
-                            let cardWidth: CGFloat = 196
+                            let cardWidth: CGFloat = 214
                             let barCenterX = frame.origin.x + barX
                             let showOnLeft = barCenterX > frame.midX
                             let preferredX = showOnLeft ? (barCenterX - cardWidth - 14) : (barCenterX + 14)
@@ -287,7 +287,7 @@ struct UsagePopover: View {
                                 metric: metric
                             )
                             .frame(width: cardWidth)
-                            .offset(x: clampedX, y: 2)
+                            .offset(x: clampedX, y: 0)
                             .allowsHitTesting(false)
                             .transition(.opacity)
                         }
@@ -295,7 +295,7 @@ struct UsagePopover: View {
                 }
             }
             .padding(.trailing, 10)
-            .frame(height: 128)
+            .frame(height: 142)
             .zIndex(10)
         }
         .onChange(of: summary.days) { _, _ in hoveredSlot = nil }
@@ -319,16 +319,49 @@ struct UsagePopover: View {
         let totalCostUsd = points.reduce(0.0) { $0 + $1.costUsd }
         let totalRequests = points.reduce(0) { $0 + $1.requests }
 
-        return VStack(alignment: .leading, spacing: 6) {
-            Text(tooltipDateTitle(date, days: days))
-                .font(.system(size: 11, weight: .semibold).monospacedDigit())
-                .foregroundStyle(.primary)
+        return VStack(alignment: .leading, spacing: 7) {
+            HStack(alignment: .center, spacing: 6) {
+                Text(tooltipDateTitle(date, days: days))
+                    .font(.system(size: 10.5, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                if totalRequests > 0 {
+                    Text(state.local("\(totalRequests) 次请求", "\(state.exact(Int64(totalRequests))) \(totalRequests == 1 ? "req" : "reqs")"))
+                        .font(.system(size: 9.5, weight: .medium).monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.primary.opacity(0.065), in: Capsule())
+                }
+            }
 
             if active.isEmpty {
                 Text(state.local("此时段无用量", "No usage in this bucket"))
                     .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
             } else {
+                // Hero Total row — clear visual focal point
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(tooltipHeroValue(tokens: totalTokens, costUsd: totalCostUsd, requests: totalRequests, metric: metric))
+                        .font(.system(size: 17, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    if let unit = tooltipHeroUnit(metric: metric) {
+                        Text(unit)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 4)
+                    if let secondary = tooltipHeroSecondary(tokens: totalTokens, costUsd: totalCostUsd, metric: metric) {
+                        Text(secondary)
+                            .font(.system(size: 10.5, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(accent)
+                            .lineLimit(1)
+                    }
+                }
+
+                Divider()
+
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(active) { entry in
                         HStack(spacing: 6) {
@@ -337,7 +370,7 @@ struct UsagePopover: View {
                                 .frame(width: 7.5, height: 7.5)
                             Text(entry.provider.name)
                                 .font(.system(size: 11))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(.primary.opacity(0.85))
                                 .lineLimit(1)
                             Spacer(minLength: 4)
                             Text(formatTooltipValue(entry, metric: metric))
@@ -346,27 +379,40 @@ struct UsagePopover: View {
                         }
                     }
                 }
-                Divider()
-                HStack(spacing: 6) {
-                    Text(state.local("合计", "Total"))
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 4)
-                    Text(tooltipFooterSummary(tokens: totalTokens, costUsd: totalCostUsd, requests: totalRequests, metric: metric))
-                        .font(.system(size: 10.5, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 11)
+        .padding(.vertical, 9)
+        .background(.thickMaterial, in: RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(.primary.opacity(0.12), lineWidth: 0.75)
+                .strokeBorder(.primary.opacity(0.14), lineWidth: 0.75)
         )
-        .shadow(color: .black.opacity(0.16), radius: 10, y: 4)
+        .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
+    }
+
+    private func tooltipHeroValue(tokens: Int64, costUsd: Double, requests: Int, metric: TrendMetric) -> String {
+        switch metric {
+        case .tokens: state.compact(tokens)
+        case .cost: formatCompactMoney(costUsd)
+        case .requests: state.exact(Int64(requests))
+        }
+    }
+
+    private func tooltipHeroUnit(metric: TrendMetric) -> String? {
+        switch metric {
+        case .tokens: state.local("Token", "tokens")
+        case .cost: nil
+        case .requests: state.local("次请求", "reqs")
+        }
+    }
+
+    private func tooltipHeroSecondary(tokens: Int64, costUsd: Double, metric: TrendMetric) -> String? {
+        switch metric {
+        case .tokens: costUsd > 0 ? formatCompactMoney(costUsd) : nil
+        case .cost: state.compact(tokens)
+        case .requests: state.compact(tokens)
+        }
     }
 
     private func tooltipDateTitle(_ date: Date, days: Int) -> String {
@@ -388,15 +434,26 @@ struct UsagePopover: View {
         }
     }
 
-    private func tooltipFooterSummary(tokens: Int64, costUsd: Double, requests: Int, metric: TrendMetric) -> String {
-        let reqText = state.local("\(requests) 次请求", "\(requests) \(requests == 1 ? "request" : "requests")")
+    private func formatBarTopLabel(_ value: Double, metric: TrendMetric) -> String {
         switch metric {
         case .tokens:
-            return "\(state.compact(tokens)) · \(reqText)"
+            let tokens = Int64(value.rounded())
+            if tokens >= 1_000_000_000 {
+                return (Double(tokens) / 1_000_000_000.0)
+                    .formatted(.number.precision(.fractionLength(0...1)).locale(state.language.locale)) + "B"
+            }
+            return state.compactInteger(tokens)
         case .cost:
-            return "\(formatCompactMoney(costUsd)) · \(reqText)"
+            let prefix = state.currency == .usd ? "$" : "¥"
+            if value < 1 {
+                return prefix + value.formatted(.number.precision(.fractionLength(2)).locale(state.language.locale))
+            }
+            if value < 10 {
+                return prefix + value.formatted(.number.precision(.fractionLength(0...1)).locale(state.language.locale))
+            }
+            return prefix + Int64(value.rounded()).formatted(.number.locale(state.language.locale))
         case .requests:
-            return "\(reqText) · \(state.compact(tokens))"
+            return state.compactInteger(Int64(value.rounded()))
         }
     }
 
@@ -428,23 +485,53 @@ struct UsagePopover: View {
         }
     }
 
-    private func trendChart(_ data: [ChartDatum], dates: [Date], days: Int, metric: TrendMetric, yMax: Double) -> some View {
+    private func trendChart(
+        _ data: [ChartDatum],
+        slotTotals: [Double],
+        dates: [Date],
+        days: Int,
+        metric: TrendMetric,
+        yMax: Double
+    ) -> some View {
         let barWidth: CGFloat = days == 7 ? 20 : days == 1 ? 8 : 6
         let currency = state.currency
         let cnyRate = state.cnyRate
-        return Chart(data) { point in
-            let yValue = point.value(for: metric, currency: currency, cnyRate: cnyRate)
-            BarMark(
-                x: .value("Slot", Double(point.slot)),
-                y: .value("Value", yValue),
-                width: .fixed(barWidth),
-                stacking: .standard
-            )
-            .foregroundStyle(by: .value("Provider", point.provider.name))
-            .cornerRadius(days == 7 ? 3 : 2)
-            .opacity(hoveredSlot == nil || hoveredSlot == point.slot ? 1.0 : 0.35)
-            .accessibilityLabel(Text(chartLabel(point.date, days: days)))
-            .accessibilityValue(Text(formatTooltipValue(point, metric: metric)))
+        return Chart {
+            ForEach(data) { point in
+                let yValue = point.value(for: metric, currency: currency, cnyRate: cnyRate)
+                BarMark(
+                    x: .value("Slot", Double(point.slot)),
+                    y: .value("Value", yValue),
+                    width: .fixed(barWidth),
+                    stacking: .standard
+                )
+                .foregroundStyle(by: .value("Provider", point.provider.name))
+                .cornerRadius(days == 7 ? 3 : 2)
+                .opacity(hoveredSlot == nil || hoveredSlot == point.slot ? 1.0 : 0.35)
+                .accessibilityLabel(Text(chartLabel(point.date, days: days)))
+                .accessibilityValue(Text(formatTooltipValue(point, metric: metric)))
+            }
+
+            if days == 7 {
+                ForEach(Array(slotTotals.enumerated()), id: \.offset) { slot, total in
+                    if total > 0 {
+                        PointMark(
+                            x: .value("Slot", Double(slot)),
+                            y: .value("Total", total)
+                        )
+                        .symbolSize(0)
+                        .foregroundStyle(.clear)
+                        .annotation(position: .top, alignment: .center, spacing: 3) {
+                            let isHighlighted = hoveredSlot == slot
+                            let isDimmed = hoveredSlot != nil && hoveredSlot != slot
+                            Text(formatBarTopLabel(total, metric: metric))
+                                .font(.system(size: 9.5, weight: isHighlighted ? .bold : .semibold, design: .rounded).monospacedDigit())
+                                .foregroundStyle(isHighlighted ? accent : Color.primary.opacity(isDimmed ? 0.25 : 0.78))
+                                .fixedSize()
+                        }
+                    }
+                }
+            }
         }
         .chartXScale(domain: -0.6...max(Double(dates.count) - 0.4, 0.6))
         .chartYScale(domain: 0...max(yMax, 1))
@@ -458,7 +545,7 @@ struct UsagePopover: View {
     private func chartTicks(count: Int, days: Int) -> [Double] {
         guard count > 0 else { return [] }
         if days == 7 {
-            return Array(stride(from: 0, to: count, by: 2)).map(Double.init)
+            return Array(0..<count).map(Double.init)
         }
         if days == 1 {
             return Array(stride(from: 0, to: count, by: 4)).map(Double.init)
@@ -470,9 +557,10 @@ struct UsagePopover: View {
         return slots.map(Double.init)
     }
 
-    private func niceChartCeiling(_ maxValue: Double, metric: TrendMetric) -> Double {
+    private func niceChartCeiling(_ maxValue: Double, metric: TrendMetric, days: Int) -> Double {
         guard maxValue > 0 else { return 0 }
-        let raw = maxValue * 1.12
+        let headroom = days == 7 ? 1.24 : 1.12
+        let raw = maxValue * headroom
         let magnitude = pow(10.0, floor(log10(raw)))
         let normalized = raw / magnitude
         let step: Double
