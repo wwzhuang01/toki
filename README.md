@@ -3,6 +3,7 @@
   <h1>Toki</h1>
   <p><strong>A lightweight, pure native Swift macOS menu bar dashboard for local AI coding token usage.</strong></p>
   <p>
+    <a href="https://wwzhuang01.github.io/toki/"><strong>Homepage</strong></a> ·
     <a href="README.zh-CN.md">简体中文</a> ·
     <a href="#features">Features</a> ·
     <a href="#supported-tools">Supported Tools</a> ·

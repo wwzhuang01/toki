@@ -1,0 +1,1668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toki — Native macOS Menu Bar AI Token Dashboard</title>
+  <meta name="description" content="A lightweight, 100% pure native Swift macOS menu bar dashboard for local AI coding token usage across Claude Code, Codex, Antigravity, and OpenCode. Zero login, 100% local." />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <meta property="og:title" content="Toki — Native macOS Menu Bar AI Token Dashboard" />
+  <meta property="og:description" content="Your daily AI tokens, always one glance away. Pure Swift 6, Universal Binary, zero login, 100% local." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://wwzhuang01.github.io/toki/" />
+  <style>
+    :root {
+      --bg: #080a0f;
+      --bg-elevated: #0f131c;
+      --bg-card: rgba(18, 22, 33, 0.72);
+      --bg-card-hover: rgba(24, 30, 44, 0.88);
+      --border: rgba(255, 255, 255, 0.085);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --text: #f3f6fc;
+      --text-secondary: #98a4bc;
+      --text-muted: #69758d;
+      --blue: #60a5fa;
+      --teal: #2dd4bf;
+      --green: #4ade80;
+      --indigo: #6366f1;
+      --claude: #d96b38;
+      --codex: #5b61d6;
+      --antigravity: #2298ba;
+      --opencode: #3ba36b;
+      --radius: 16px;
+      --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "PingFang SC", "Hiragino Sans GB", sans-serif;
+      --font-mono: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Ambient top glow */
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 65% 42% at 50% -6%, rgba(45, 212, 191, 0.14), transparent 70%),
+        radial-gradient(ellipse 45% 35% at 80% 10%, rgba(96, 165, 250, 0.09), transparent 65%),
+        radial-gradient(ellipse 40% 35% at 18% 20%, rgba(99, 102, 241, 0.08), transparent 65%);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Nav */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      background: rgba(8, 10, 15, 0.72);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .nav-inner {
+      height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+    .brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: color 0.16s ease;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .lang-toggle {
+      display: inline-flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px;
+    }
+    .lang-toggle button {
+      border: 0;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .lang-toggle button.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 10px;
+      padding: 10px 18px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.18s ease, background 0.15s ease, border-color 0.15s ease;
+      border: 1px solid transparent;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn-sm { padding: 7px 13px; font-size: 13px; border-radius: 8px; }
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6 0%, #14b8a6 60%, #22c55e 100%);
+      color: #041016;
+      box-shadow: 0 6px 24px rgba(45, 212, 191, 0.28);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 10px 30px rgba(45, 212, 191, 0.42);
+      transform: translateY(-1px);
+    }
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-strong);
+      color: var(--text);
+    }
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.10);
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 72px 0 56px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+      gap: 48px;
+      align-items: center;
+    }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--teal);
+      background: rgba(45, 212, 191, 0.10);
+      border: 1px solid rgba(45, 212, 191, 0.25);
+      padding: 5px 12px;
+      border-radius: 999px;
+      margin-bottom: 20px;
+    }
+    .eyebrow-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+    h1 {
+      font-size: clamp(36px, 5vw, 54px);
+      line-height: 1.08;
+      letter-spacing: -0.035em;
+      font-weight: 760;
+      margin-bottom: 18px;
+    }
+    .gradient-text {
+      background: linear-gradient(110deg, #93c5fd 0%, #2dd4bf 52%, #4ade80 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .hero-sub {
+      font-size: 16.5px;
+      color: var(--text-secondary);
+      max-width: 500px;
+      margin-bottom: 28px;
+    }
+    .hero-ctas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .hero-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Interactive macOS Desktop + Toki Popover Stage */
+    .stage-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .stage {
+      width: 100%;
+      max-width: 430px;
+      background: linear-gradient(165deg, #151b2b 0%, #0d111a 100%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 22px;
+      padding: 12px 14px 16px;
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+    .mac-menubar {
+      height: 28px;
+      border-radius: 8px;
+      background: rgba(15, 17, 23, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+    .mac-menubar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 11.5px;
+    }
+    .mac-menubar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: rgba(255, 255, 255, 0.52);
+    }
+    .toki-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* Live Interactive Toki Popover */
+    .popover {
+      background: rgba(246, 247, 251, 0.96);
+      color: #161922;
+      border-radius: 15px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42);
+      overflow: hidden;
+      font-variant-numeric: tabular-nums;
+    }
+    .pop-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+    .pop-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #111420;
+    }
+    .seg {
+      display: inline-flex;
+      background: rgba(15, 23, 42, 0.07);
+      border-radius: 7px;
+      padding: 2px;
+      gap: 1px;
+    }
+    .seg button {
+      border: 0;
+      background: transparent;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3.5px 9px;
+      border-radius: 5.5px;
+      cursor: pointer;
+      transition: all 0.14s ease;
+    }
+    .seg button.active {
+      background: #5b61d6;
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(91, 97, 214, 0.35);
+    }
+    .pop-body {
+      padding: 12px 14px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pop-hero {
+      background: rgba(91, 97, 214, 0.085);
+      border: 1px solid rgba(91, 97, 214, 0.16);
+      border-radius: 11px;
+      padding: 11px 12px;
+    }
+    .pop-hero-top {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      margin-bottom: 7px;
+    }
+    .pop-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .pop-big {
+      font-size: 31px;
+      line-height: 1.05;
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      color: #111827;
+    }
+    .pop-cost {
+      font-size: 19px;
+      line-height: 1.1;
+      font-weight: 700;
+      color: #111827;
+      text-align: right;
+    }
+    .pop-hero-foot {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      color: #5358c8;
+    }
+    .pop-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+    .pop-stat {
+      background: rgba(15, 23, 42, 0.042);
+      border-radius: 8px;
+      padding: 7px 9px;
+    }
+    .pop-stat-k {
+      font-size: 10px;
+      color: #64748b;
+      margin-bottom: 2px;
+    }
+    .pop-stat-v {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .pop-stat-sub {
+      font-size: 9px;
+      font-weight: 500;
+      color: #64748b;
+    }
+
+    /* Interactive Demo Chart */
+    .pop-chart-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .pop-sec-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .metric-tabs {
+      display: inline-flex;
+      background: rgba(15, 23, 42, 0.06);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 1px;
+    }
+    .metric-tabs button {
+      border: 0;
+      background: transparent;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2.5px 7px;
+      border-radius: 4.5px;
+      cursor: pointer;
+    }
+    .metric-tabs button.active {
+      background: #ffffff;
+      color: #0f172a;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    .chart-box {
+      position: relative;
+      height: 128px;
+      padding: 16px 4px 20px 34px;
+      user-select: none;
+    }
+    .y-grid {
+      position: absolute;
+      left: 34px;
+      right: 4px;
+      top: 16px;
+      bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+    .y-line {
+      border-top: 1px dashed rgba(15, 23, 42, 0.12);
+      position: relative;
+    }
+    .y-line span {
+      position: absolute;
+      left: -34px;
+      top: -6px;
+      width: 28px;
+      text-align: right;
+      font-size: 9px;
+      color: #64748b;
+    }
+    .bars-row {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .bar-col {
+      flex: 1;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      position: relative;
+      cursor: pointer;
+    }
+    .bar-top-val {
+      font-size: 9px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      transition: opacity 0.12s ease, color 0.12s ease;
+    }
+    .bar-stack {
+      width: 18px;
+      max-width: 100%;
+      border-radius: 3px 3px 2px 2px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column-reverse;
+      transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+    .bar-stack.narrow { width: 8px; border-radius: 2px; }
+    .bar-seg { width: 100%; }
+    .bar-x {
+      position: absolute;
+      bottom: -18px;
+      font-size: 9px;
+      color: #64748b;
+      white-space: nowrap;
+    }
+    .bars-row.has-hover .bar-col:not(.hovered) .bar-stack,
+    .bars-row.has-hover .bar-col:not(.hovered) .bar-top-val {
+      opacity: 0.32;
+    }
+    .bar-col.hovered .bar-top-val { color: #5b61d6; }
+
+    /* Floating Hover Tooltip Card */
+    .hover-card {
+      position: absolute;
+      top: 0;
+      width: 204px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 10px;
+      padding: 8px 10px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+      z-index: 20;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(2px);
+      transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+    .hover-card.visible { opacity: 1; transform: translateY(0); }
+    .hc-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .hc-pill {
+      font-size: 9px;
+      background: rgba(15, 23, 42, 0.06);
+      padding: 1.5px 6px;
+      border-radius: 999px;
+      color: #475569;
+    }
+    .hc-hero {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+      padding-bottom: 6px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+    .hc-total {
+      font-size: 16px;
+      font-weight: 750;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+    }
+    .hc-unit {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #64748b;
+      margin-left: 3px;
+    }
+    .hc-sec {
+      font-size: 10px;
+      font-weight: 700;
+      color: #5b61d6;
+    }
+    .hc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 10.5px;
+      color: #1e293b;
+      margin-top: 3px;
+    }
+    .hc-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hc-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 2px;
+    }
+    .stage-hint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* Sections */
+    section {
+      padding: 64px 0;
+    }
+    .section-head {
+      max-width: 620px;
+      margin-bottom: 34px;
+    }
+    .section-kicker {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--teal);
+      margin-bottom: 8px;
+    }
+    h2 {
+      font-size: clamp(26px, 3.4vw, 34px);
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      font-weight: 720;
+      margin-bottom: 10px;
+    }
+    .section-sub {
+      font-size: 15.5px;
+      color: var(--text-secondary);
+    }
+
+    /* Supported Tools Grid */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .tool-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+    }
+    .tool-card:hover {
+      border-color: var(--border-strong);
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+    }
+    .tool-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .tool-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 680;
+      font-size: 15px;
+    }
+    .tool-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 3px;
+    }
+    .zero-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--green);
+      background: rgba(74, 222, 128, 0.10);
+      border: 1px solid rgba(74, 222, 128, 0.22);
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+    .tool-path {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--blue);
+      background: rgba(96, 165, 250, 0.08);
+      padding: 3px 7px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-bottom: 10px;
+      word-break: break-all;
+    }
+    .tool-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+
+    /* Bento Features */
+    .bento {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .feature-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(45, 212, 191, 0.10);
+      border: 1px solid rgba(45, 212, 191, 0.22);
+      color: var(--teal);
+      margin-bottom: 2px;
+    }
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 680;
+      letter-spacing: -0.015em;
+    }
+    .feature-card p {
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Install & Config */
+    .install-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 14px;
+    }
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(45, 212, 191, 0.14);
+      border: 1px solid rgba(45, 212, 191, 0.35);
+      color: var(--teal);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step strong { display: block; font-size: 14px; margin-bottom: 3px; }
+    .step p { font-size: 13px; color: var(--text-secondary); }
+    .code-wrap {
+      position: relative;
+      margin-top: 10px;
+      background: #07090d;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      border-radius: 10px;
+      padding: 12px 68px 12px 14px;
+      overflow-x: auto;
+    }
+    pre, code {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.6;
+      color: #dbeafe;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .copy-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.12); }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      padding: 36px 0 48px;
+      margin-top: 24px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .foot-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .foot-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+    }
+    .foot-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+    .foot-links a:hover { color: var(--text); }
+    .disclaimer {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 920px) {
+      .hero { grid-template-columns: 1fr; padding-top: 44px; gap: 36px; }
+      .tools-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .install-grid { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+    @media (max-width: 560px) {
+      .tools-grid, .bento { grid-template-columns: 1fr; }
+      .nav-actions .btn-sm { display: none; }
+      .pop-big { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient"></div>
+
+  <header>
+    <div class="container nav-inner">
+      <a class="brand" href="#">
+        <svg width="28" height="28" viewBox="0 0 68 68" fill="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="navBg" x1="12" y1="6" x2="56" y2="62" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#1b1e26"/>
+              <stop offset="100%" stop-color="#0c0d11"/>
+            </linearGradient>
+            <linearGradient id="navBars" x1="16" y1="54" x2="52" y2="26" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#60a5fa"/>
+              <stop offset="55%" stop-color="#2dd4bf"/>
+              <stop offset="100%" stop-color="#4ade80"/>
+            </linearGradient>
+          </defs>
+          <rect x="2" y="2" width="64" height="64" rx="16" fill="url(#navBg)" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+          <path d="M16.5 24C22 14.2 46 14.2 51.5 24" stroke="rgba(255,255,255,0.3)" stroke-width="2.4" stroke-linecap="round"/>
+          <rect x="16" y="40.5" width="9.5" height="13" rx="3.4" fill="url(#navBars)" opacity="0.58"/>
+          <rect x="29.25" y="33.5" width="9.5" height="20" rx="3.4" fill="url(#navBars)" opacity="0.82"/>
+          <rect x="42.5" y="27" width="9.5" height="26.5" rx="3.4" fill="url(#navBars)"/>
+        </svg>
+        <span>Toki</span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#tools" data-i18n="navTools">Tools</a>
+        <a href="#features" data-i18n="navFeatures">Features</a>
+        <a href="#install" data-i18n="navInstall">Install</a>
+        <a href="https://github.com/wwzhuang01/toki" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+
+      <div class="nav-actions">
+        <div class="lang-toggle" role="group" aria-label="Language">
+          <button id="btn-en" class="active" type="button">EN</button>
+          <button id="btn-zh" type="button">中文</button>
+        </div>
+        <a id="nav-download" class="btn btn-primary btn-sm" href="https://github.com/wwzhuang01/toki/releases/download/v1.0.1/Toki-1.0.1-universal.dmg" data-i18n="navDownload">Download</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Hero -->
+    <section class="hero">
+      <div>
+        <div class="eyebrow">
+          <span class="eyebrow-dot"></span>
+          <span id="version-badge">v1.0.1 · macOS 14+ · Universal Binary</span>
+        </div>
+        <h1 data-i18n="heroTitle">Your daily AI tokens,<br/><span class="gradient-text">always one glance away.</span></h1>
+        <p class="hero-sub" data-i18n="heroSub">
+          Toki (<em>Token</em> + Japanese <em>時</em>) is a 2.8 MB pure native Swift macOS menu bar app that tracks your local Claude Code, Codex, Antigravity, and OpenCode token usage — with zero logins, zero cloud uploads, and zero Electron bloat.
+        </p>
+
+        <div class="hero-ctas">
+          <a id="hero-download" class="btn btn-primary" href="https://github.com/wwzhuang01/toki/releases/download/v1.0.1/Toki-1.0.1-universal.dmg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span data-i18n="heroDownload">Download for macOS</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/wwzhuang01/toki" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.68 0-1.25.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.17 1.18a10.9 10.9 0 0 1 5.76 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.59.23 2.76.11 3.05.74.8 1.18 1.83 1.18 3.08 0 4.41-2.69 5.39-5.26 5.67.41.36.78 1.07.78 2.15 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+            <span data-i18n="heroGithub">View on GitHub</span>
+          </a>
+        </div>
+
+        <div class="hero-meta">
+          <span data-i18n="metaArch">Apple Silicon &amp; Intel</span>
+          <span>·</span>
+          <span data-i18n="metaPrivacy">100% Local &amp; Read-Only</span>
+          <span>·</span>
+          <span data-i18n="metaLicense">MIT Open Source</span>
+        </div>
+      </div>
+
+      <!-- Interactive Live macOS Demo -->
+      <div class="stage-wrap">
+        <div class="stage">
+          <div class="mac-menubar">
+            <div class="mac-menubar-left">
+              <span></span>
+              <span>Finder</span>
+            </div>
+            <div class="mac-menubar-right">
+              <span class="toki-status-pill">
+                <svg width="14" height="14" viewBox="0 0 18 18" fill="none">
+                  <path d="M3 5C5.5 2.3 12.5 2.3 15 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+                  <rect x="2.6" y="10.6" width="3.1" height="4.6" rx="1.1" fill="currentColor" opacity="0.58"/>
+                  <rect x="7.45" y="8.4" width="3.1" height="6.8" rx="1.1" fill="currentColor" opacity="0.82"/>
+                  <rect x="12.3" y="6.2" width="3.1" height="9" rx="1.1" fill="currentColor"/>
+                </svg>
+                <span>329M</span>
+              </span>
+              <span>Wi‑Fi</span>
+              <span>14:07</span>
+            </div>
+          </div>
+
+          <div class="popover">
+            <div class="pop-toolbar">
+              <div class="pop-brand">
+                <svg width="17" height="17" viewBox="0 0 18 18" fill="none">
+                  <defs>
+                    <linearGradient id="miniGrad" x1="2.6" y1="15.2" x2="15.4" y2="6.2" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stop-color="#60a5fa"/>
+                      <stop offset="55%" stop-color="#2dd4bf"/>
+                      <stop offset="100%" stop-color="#4ade80"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M3 5C5.5 2.3 12.5 2.3 15 5" stroke="#94a3b8" stroke-width="1.4" stroke-linecap="round"/>
+                  <rect x="2.6" y="10.6" width="3.1" height="4.6" rx="1.1" fill="url(#miniGrad)" opacity="0.62"/>
+                  <rect x="7.45" y="8.4" width="3.1" height="6.8" rx="1.1" fill="url(#miniGrad)" opacity="0.84"/>
+                  <rect x="12.3" y="6.2" width="3.1" height="9" rx="1.1" fill="url(#miniGrad)"/>
+                </svg>
+                <span>Toki</span>
+              </div>
+              <div class="seg" id="demo-window-seg">
+                <button type="button" data-win="1" data-i18n="winToday">Today</button>
+                <button type="button" data-win="7" class="active" data-i18n="win7d">7 Days</button>
+                <button type="button" data-win="30" data-i18n="win30d">30 Days</button>
+              </div>
+            </div>
+
+            <div class="pop-body">
+              <div class="pop-hero">
+                <div class="pop-hero-top">
+                  <div>
+                    <div class="pop-label" data-i18n="demoTotalLabel">Total tokens</div>
+                    <div class="pop-big" id="demo-total">2.3B</div>
+                  </div>
+                  <div>
+                    <div class="pop-label" style="text-align:right" data-i18n="demoCostLabel">Estimated cost</div>
+                    <div class="pop-cost" id="demo-cost">$1,508.06</div>
+                  </div>
+                </div>
+                <div class="pop-hero-foot">
+                  <span id="demo-hit">⚡ 82.9%</span>
+                  <span id="demo-save">Cache savings $4,653.06</span>
+                </div>
+              </div>
+
+              <div class="pop-grid">
+                <div class="pop-stat">
+                  <div class="pop-stat-k" data-i18n="statUncached">↗ Uncached input</div>
+                  <div class="pop-stat-v"><span id="demo-uncached">387.37M</span></div>
+                </div>
+                <div class="pop-stat">
+                  <div class="pop-stat-k" data-i18n="statCacheRead">⚡ Cache read</div>
+                  <div class="pop-stat-v"><span id="demo-cread">1.9B</span></div>
+                </div>
+                <div class="pop-stat">
+                  <div class="pop-stat-k" data-i18n="statCacheWrite">↓ Cache write</div>
+                  <div class="pop-stat-v"><span id="demo-cwrite">2.98M</span></div>
+                </div>
+                <div class="pop-stat">
+                  <div class="pop-stat-k" data-i18n="statOutput">↙ Output</div>
+                  <div class="pop-stat-v">
+                    <span id="demo-output">11.11M</span>
+                    <span class="pop-stat-sub" id="demo-reason">Reasoning 3.67M</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div class="pop-chart-head">
+                  <div class="pop-sec-title" data-i18n="demoTrend">Usage trend</div>
+                  <div class="metric-tabs" id="demo-metric-tabs">
+                    <button type="button" data-metric="tokens" class="active" data-i18n="mTokens">Tokens</button>
+                    <button type="button" data-metric="cost" data-i18n="mCost">Cost</button>
+                    <button type="button" data-metric="requests" data-i18n="mRequests">Requests</button>
+                  </div>
+                </div>
+                <div class="chart-box" id="demo-chart-box">
+                  <div class="y-grid" id="demo-y-grid"></div>
+                  <div class="bars-row" id="demo-bars"></div>
+                  <div class="hover-card" id="demo-hover-card"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stage-hint" data-i18n="stageHint">Interactive preview — switch tabs or hover any bar</div>
+      </div>
+    </section>
+
+    <!-- Supported Tools -->
+    <section id="tools">
+      <div class="section-head">
+        <div class="section-kicker" data-i18n="toolsKicker">Zero-Config Discovery</div>
+        <h2 data-i18n="toolsTitle">Works with your local AI coding tools out of the box</h2>
+        <p class="section-sub" data-i18n="toolsSub">No OAuth flows, no API keys, no background proxies. Toki reads your local session histories directly and safely in read-only mode.</p>
+      </div>
+
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-top">
+            <span class="tool-name"><span class="tool-dot" style="background:var(--claude)"></span>Claude Code</span>
+            <span class="zero-tag" data-i18n="noLogin">No Login</span>
+          </div>
+          <span class="tool-path">~/.claude/projects</span>
+          <p class="tool-desc" data-i18n="toolClaude">Deduplicates streamed content blocks by message &amp; request ID, tracks advisor iterations &amp; 1h cache writes, and reads both .jsonl and .jsonl.zst archives.</p>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-top">
+            <span class="tool-name"><span class="tool-dot" style="background:var(--codex)"></span>Codex</span>
+            <span class="zero-tag" data-i18n="noLogin">No Login</span>
+          </div>
+          <span class="tool-path">~/.codex/sessions</span>
+          <p class="tool-desc" data-i18n="toolCodex">Accurate cumulative snapshot diffing, baseline rebase recovery, interrupted-turn gap reconciliation, fork suppression, and cross-file deduplication.</p>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-top">
+            <span class="tool-name"><span class="tool-dot" style="background:var(--antigravity)"></span>Antigravity</span>
+            <span class="zero-tag" data-i18n="noLogin">No Login</span>
+          </div>
+          <span class="tool-path">~/.gemini/antigravity*</span>
+          <p class="tool-desc" data-i18n="toolAgy">Native C SQLite3 (including closed WAL databases via immutable read) paired with a pure Swift Protobuf wire decoder and dynamic model-name learning.</p>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-top">
+            <span class="tool-name"><span class="tool-dot" style="background:var(--opencode)"></span>OpenCode</span>
+            <span class="zero-tag" data-i18n="noLogin">No Login</span>
+          </div>
+          <span class="tool-path">~/.local/share/opencode</span>
+          <p class="tool-desc" data-i18n="toolOpenCode">Incremental SQLite3 rowid scanning across v1 and v2 schemas with fork-boundary filtering and legacy JSON history fallback.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bento Features -->
+    <section id="features">
+      <div class="section-head">
+        <div class="section-kicker" data-i18n="featKicker">Crafted for macOS</div>
+        <h2 data-i18n="featTitle">Fast, private, and built like a native Apple utility</h2>
+        <p class="section-sub" data-i18n="featSub">Every kilobyte and interaction is tuned for staying out of your way while giving instant clarity when you click.</p>
+      </div>
+
+      <div class="bento">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <h3 data-i18n="f1Title">2.8 MB Universal Native</h3>
+          <p data-i18n="f1Desc">Built 100% in Swift 6, SwiftUI, AppKit, and Swift Charts for Apple Silicon and Intel. No Electron, no bundled Node runtime, tiny memory footprint.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h3 data-i18n="f2Title">100% Local &amp; Read-Only</h3>
+          <p data-i18n="f2Desc">Your prompts and code never leave your Mac. Toki never writes to your AI tools' directories; its only optional network request caches public LiteLLM pricing.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h3 data-i18n="f3Title">Event-Driven Refresh</h3>
+          <p data-i18n="f3Desc">Incremental byte-offset scan cache + FSEvents directory watching + automatic local midnight rollover + instant wake-from-sleep refresh.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <h3 data-i18n="f4Title">Cost &amp; Cache Savings</h3>
+          <p data-i18n="f4Desc">See estimated spend and exact prompt-cache savings in USD or CNY, complete with cache hit rate, custom exchange rate, and per-model rate overrides.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+          <h3 data-i18n="f5Title">Interactive Trend Charts</h3>
+          <p data-i18n="f5Desc">Switch between Tokens, Cost, and Requests across Today (24h), 7 Days, and 30 Days with daily bar-top totals and floating hover breakdown cards.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <h3 data-i18n="f6Title">Power-User Config &amp; CLI</h3>
+          <p data-i18n="f6Desc">Customize paths, aliases, filters, and prices via ~/.config/toki/config.json (plus T3 Code compatibility), or pipe live JSON via Toki --dump-json.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Install & Configuration -->
+    <section id="install">
+      <div class="section-head">
+        <div class="section-kicker" data-i18n="instKicker">Get Started in 30 Seconds</div>
+        <h2 data-i18n="instTitle">Install &amp; customize</h2>
+        <p class="section-sub" data-i18n="instSub">Download the Universal DMG directly from GitHub Releases or build from source with Swift 6.</p>
+      </div>
+
+      <div class="install-grid">
+        <div class="panel">
+          <h3 style="font-size:16px;font-weight:680" data-i18n="instBoxTitle">Install on macOS 14+</h3>
+          <div class="step-list">
+            <div class="step">
+              <div class="step-num">1</div>
+              <div>
+                <strong data-i18n="s1Title">Download Universal DMG</strong>
+                <p data-i18n="s1Desc">Grab the latest release for Apple Silicon &amp; Intel Macs and drag Toki.app into /Applications.</p>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">2</div>
+              <div>
+                <strong data-i18n="s2Title">First-launch Gatekeeper note</strong>
+                <p data-i18n="s2Desc">Open-source builds are ad-hoc signed. If macOS blocks the first launch, run once in Terminal:</p>
+                <div class="code-wrap">
+                  <button class="copy-btn" type="button" data-copy="xattr -dr com.apple.quarantine /Applications/Toki.app" data-i18n="copy">Copy</button>
+                  <pre><code>xattr -dr com.apple.quarantine /Applications/Toki.app</code></pre>
+                </div>
+              </div>
+            </div>
+            <div class="step">
+              <div class="step-num">3</div>
+              <div>
+                <strong data-i18n="s3Title">Launch &amp; enable Launch at Login</strong>
+                <p data-i18n="s3Desc">Open Toki from Spotlight, click the menu bar meter, and customize format, currency, and language in Settings.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3 style="font-size:16px;font-weight:680" data-i18n="cfgBoxTitle">Optional ~/.config/toki/config.json</h3>
+          <p style="font-size:13px;color:var(--text-secondary);margin-top:6px" data-i18n="cfgDesc">
+            Works out of the box with zero config. Add custom source paths, model aliases, filters, or price overrides whenever you need:
+          </p>
+          <div class="code-wrap">
+            <button class="copy-btn" type="button" data-copy-target="cfg-code" data-i18n="copy">Copy</button>
+            <pre id="cfg-code"><code>{
+  "modelAliases": {
+    "my-proxy/claude-sonnet": "claude-sonnet-4-6"
+  },
+  "priceOverrides": {
+    "my-custom-model": {
+      "inputCostPerMillionTokens": 3.0,
+      "outputCostPerMillionTokens": 15.0
+    }
+  },
+  "sources": {
+    "claude": ["~/work/.claude"],
+    "codex": ["~/work/.codex"]
+  }
+}</code></pre>
+          </div>
+          <p style="font-size:12.5px;color:var(--text-muted);margin-top:12px" data-i18n="cliHint">
+            CLI inspection: <code style="color:var(--teal)">/Applications/Toki.app/Contents/MacOS/Toki --dump-json --days 7</code>
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="foot-top">
+        <div class="brand" style="font-size:15px">
+          <svg width="22" height="22" viewBox="0 0 68 68" fill="none" aria-hidden="true">
+            <rect x="2" y="2" width="64" height="64" rx="16" fill="url(#navBg)" stroke="rgba(255,255,255,0.14)" stroke-width="2"/>
+            <path d="M16.5 24C22 14.2 46 14.2 51.5 24" stroke="rgba(255,255,255,0.3)" stroke-width="2.4" stroke-linecap="round"/>
+            <rect x="16" y="40.5" width="9.5" height="13" rx="3.4" fill="url(#navBars)" opacity="0.58"/>
+            <rect x="29.25" y="33.5" width="9.5" height="20" rx="3.4" fill="url(#navBars)" opacity="0.82"/>
+            <rect x="42.5" y="27" width="9.5" height="26.5" rx="3.4" fill="url(#navBars)"/>
+          </svg>
+          <span>Toki · MIT License</span>
+        </div>
+        <div class="foot-links">
+          <a href="https://github.com/wwzhuang01/toki" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/wwzhuang01/toki/releases" target="_blank" rel="noopener" data-i18n="footReleases">Releases</a>
+          <a href="https://github.com/wwzhuang01/toki/issues" target="_blank" rel="noopener" data-i18n="footIssues">Issues</a>
+          <a href="https://github.com/pingdotgg/t3code" target="_blank" rel="noopener">T3 Code</a>
+          <a href="https://github.com/yetone/magpie" target="_blank" rel="noopener">Magpie</a>
+          <a href="https://github.com/BerriAI/litellm" target="_blank" rel="noopener">LiteLLM</a>
+        </div>
+      </div>
+      <p class="disclaimer" data-i18n="disclaimer">
+        Toki is an independent open-source project and is not affiliated with Anthropic, OpenAI, Google, or OpenCode. Acknowledgements to T3 Code, Magpie, LiteLLM, and facebook/zstd.
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    const I18N = {
+      en: {
+        navTools: "Tools",
+        navFeatures: "Features",
+        navInstall: "Install",
+        navDownload: "Download",
+        heroTitle: 'Your daily AI tokens,<br/><span class="gradient-text">always one glance away.</span>',
+        heroSub: 'Toki (<em>Token</em> + Japanese <em>時</em>) is a 2.8 MB pure native Swift macOS menu bar app that tracks your local Claude Code, Codex, Antigravity, and OpenCode token usage — with zero logins, zero cloud uploads, and zero Electron bloat.',
+        heroDownload: "Download for macOS",
+        heroGithub: "View on GitHub",
+        metaArch: "Apple Silicon & Intel",
+        metaPrivacy: "100% Local & Read-Only",
+        metaLicense: "MIT Open Source",
+        winToday: "Today",
+        win7d: "7 Days",
+        win30d: "30 Days",
+        demoTotalLabel: "Total tokens",
+        demoCostLabel: "Estimated cost",
+        statUncached: "↗ Uncached input",
+        statCacheRead: "⚡ Cache read",
+        statCacheWrite: "↓ Cache write",
+        statOutput: "↙ Output",
+        demoTrend: "Usage trend",
+        mTokens: "Tokens",
+        mCost: "Cost",
+        mRequests: "Requests",
+        stageHint: "Interactive preview — switch tabs or hover any bar",
+        toolsKicker: "Zero-Config Discovery",
+        toolsTitle: "Works with your local AI coding tools out of the box",
+        toolsSub: "No OAuth flows, no API keys, no background proxies. Toki reads your local session histories directly and safely in read-only mode.",
+        noLogin: "No Login",
+        toolClaude: "Deduplicates streamed content blocks by message & request ID, tracks advisor iterations & 1h cache writes, and reads both .jsonl and .jsonl.zst archives.",
+        toolCodex: "Accurate cumulative snapshot diffing, baseline rebase recovery, interrupted-turn gap reconciliation, fork suppression, and cross-file deduplication.",
+        toolAgy: "Native C SQLite3 (including closed WAL databases via immutable read) paired with a pure Swift Protobuf wire decoder and dynamic model-name learning.",
+        toolOpenCode: "Incremental SQLite3 rowid scanning across v1 and v2 schemas with fork-boundary filtering and legacy JSON history fallback.",
+        featKicker: "Crafted for macOS",
+        featTitle: "Fast, private, and built like a native Apple utility",
+        featSub: "Every kilobyte and interaction is tuned for staying out of your way while giving instant clarity when you click.",
+        f1Title: "2.8 MB Universal Native",
+        f1Desc: "Built 100% in Swift 6, SwiftUI, AppKit, and Swift Charts for Apple Silicon and Intel. No Electron, no bundled Node runtime, tiny memory footprint.",
+        f2Title: "100% Local & Read-Only",
+        f2Desc: "Your prompts and code never leave your Mac. Toki never writes to your AI tools' directories; its only optional network request caches public LiteLLM pricing.",
+        f3Title: "Event-Driven Refresh",
+        f3Desc: "Incremental byte-offset scan cache + FSEvents directory watching + automatic local midnight rollover + instant wake-from-sleep refresh.",
+        f4Title: "Cost & Cache Savings",
+        f4Desc: "See estimated spend and exact prompt-cache savings in USD or CNY, complete with cache hit rate, custom exchange rate, and per-model rate overrides.",
+        f5Title: "Interactive Trend Charts",
+        f5Desc: "Switch between Tokens, Cost, and Requests across Today (24h), 7 Days, and 30 Days with daily bar-top totals and floating hover breakdown cards.",
+        f6Title: "Power-User Config & CLI",
+        f6Desc: "Customize paths, aliases, filters, and prices via ~/.config/toki/config.json (plus T3 Code compatibility), or pipe live JSON via Toki --dump-json.",
+        instKicker: "Get Started in 30 Seconds",
+        instTitle: "Install & customize",
+        instSub: "Download the Universal DMG directly from GitHub Releases or build from source with Swift 6.",
+        instBoxTitle: "Install on macOS 14+",
+        s1Title: "Download Universal DMG",
+        s1Desc: "Grab the latest release for Apple Silicon & Intel Macs and drag Toki.app into /Applications.",
+        s2Title: "First-launch Gatekeeper note",
+        s2Desc: "Open-source builds are ad-hoc signed. If macOS blocks the first launch, run once in Terminal:",
+        s3Title: "Launch & enable Launch at Login",
+        s3Desc: "Open Toki from Spotlight, click the menu bar meter, and customize format, currency, and language in Settings.",
+        cfgBoxTitle: "Optional ~/.config/toki/config.json",
+        cfgDesc: "Works out of the box with zero config. Add custom source paths, model aliases, filters, or price overrides whenever you need:",
+        cliHint: 'CLI inspection: <code style="color:var(--teal)">/Applications/Toki.app/Contents/MacOS/Toki --dump-json --days 7</code>',
+        copy: "Copy",
+        copied: "Copied",
+        footReleases: "Releases",
+        footIssues: "Issues",
+        disclaimer: "Toki is an independent open-source project and is not affiliated with Anthropic, OpenAI, Google, or OpenCode. Acknowledgements to T3 Code, Magpie, LiteLLM, and facebook/zstd.",
+        cacheSavingsPrefix: "Cache savings",
+        reasoningPrefix: "Reasoning",
+        reqsUnit: "reqs",
+        tokensUnit: "tokens"
+      },
+      zh: {
+        navTools: "支持工具",
+        navFeatures: "核心特性",
+        navInstall: "快速安装",
+        navDownload: "立即下载",
+        heroTitle: '今日 AI Token 用量，<br/><span class="gradient-text">抬眼即见。</span>',
+        heroSub: 'Toki（取 <em>Token</em> 与日语「<em>時</em>」双关）是一款仅 2.8 MB 的 100% 纯原生 Swift macOS 菜单栏应用，实时汇总本机 Claude Code、Codex、Antigravity 与 OpenCode 用量——免登录、纯本地、零 Electron 负担。',
+        heroDownload: "下载 macOS 版",
+        heroGithub: "查看 GitHub",
+        metaArch: "Apple Silicon & Intel 通用",
+        metaPrivacy: "100% 本地只读",
+        metaLicense: "MIT 开源协议",
+        winToday: "今日",
+        win7d: "7 天",
+        win30d: "30 天",
+        demoTotalLabel: "总 Token",
+        demoCostLabel: "预估费用",
+        statUncached: "↗ 未缓存输入",
+        statCacheRead: "⚡ 缓存读取",
+        statCacheWrite: "↓ 缓存写入",
+        statOutput: "↙ 输出",
+        demoTrend: "用量趋势",
+        mTokens: "Token",
+        mCost: "费用",
+        mRequests: "请求",
+        stageHint: "可交互预览 — 试试切换时间窗口、指标标签，或悬停柱子查看明细",
+        toolsKicker: "零配置自动发现",
+        toolsTitle: "开箱即用，免登录直读本机 AI 编程工具",
+        toolsSub: "无需登录账号、无需填写 API Key、无需挂代理。Toki 以严格只读模式直接解析本机会话历史。",
+        noLogin: "免登录",
+        toolClaude: "按 messageId:requestId 流式去重，精准计入 advisor 子调用与 1h 缓存写入，原生支持 .jsonl 与 .jsonl.zst 归档。",
+        toolCodex: "支持累计快照差分、基线重置恢复、中断间隙补齐、Fork 过滤与跨文件去重，口径零误差。",
+        toolAgy: "原生 C SQLite3（immutable 只读兼容已关闭的 WAL 库）搭配纯 Swift Protobuf 解码器与模型名动态学习。",
+        toolOpenCode: "基于 rowid 的 SQLite3 增量扫描，兼容 v1/v2 表结构、Fork 边界过滤与历史 JSON 回退。",
+        featKicker: "为 macOS 原生打磨",
+        featTitle: "极速、私密，宛如系统自带的精致小工具",
+        featSub: "从体积到交互克制打磨：平时安静待在顶部菜单栏，点开即现完整洞察。",
+        f1Title: "2.8 MB 双架构纯原生",
+        f1Desc: "100% Swift 6 + SwiftUI + AppKit + Swift Charts 构建，Apple Silicon 与 Intel 通用，无 Electron / Node 运行时负担。",
+        f2Title: "100% 本地隐私只读",
+        f2Desc: "提示词与代码绝不离开你的 Mac，绝不写入原工具目录；唯一可选网络请求仅用于缓存公开的 LiteLLM 价格表。",
+        f3Title: "事件驱动增量刷新",
+        f3Desc: "字节偏移增量缓存 + FSEvents 目录变动监听 + 本地时区跨午夜自动归零 + 合盖唤醒即时刷新。",
+        f4Title: "预估费用与缓存节省",
+        f4Desc: "自动估算 USD / CNY 花费、缓存命中率与缓存节省金额，支持自定义汇率与单模型价格覆盖。",
+        f5Title: "可交互趋势图与浮层明细",
+        f5Desc: "支持 Token / 费用 / 请求三维度切换，7 天图柱顶直显每日总量，悬停弹出高亮总览与分服务商明细卡片。",
+        f6Title: "独立配置与 CLI 输出",
+        f6Desc: "支持 ~/.config/toki/config.json 自定义数据源、别名、过滤与定价（兼容 T3 Code），也支持 --dump-json 命令行输出。",
+        instKicker: "30 秒上手",
+        instTitle: "安装与自定义配置",
+        instSub: "前往 GitHub Releases 直接下载双架构 DMG，或使用 Swift 6 从源码编译。",
+        instBoxTitle: "在 macOS 14+ 上安装",
+        s1Title: "下载双架构通用 DMG",
+        s1Desc: "下载最新 Toki Universal DMG（支持 M 系列与 Intel Mac），将 Toki.app 拖入应用程序目录。",
+        s2Title: "首次打开解除 Gatekeeper 拦截",
+        s2Desc: "开源版本采用自签名构建，首次打开若提示「无法验证开发者」，在终端执行一次：",
+        s3Title: "启动并开启开机自启",
+        s3Desc: "从聚焦搜索打开 Toki，点击顶部菜单栏数字即可查看明细，并可在设置中切换显示格式、币种与语言。",
+        cfgBoxTitle: "可选独立配置 ~/.config/toki/config.json",
+        cfgDesc: "默认零配置即用；如需补充自定义目录、模型别名、过滤器或价格覆盖，可按如下格式创建：",
+        cliHint: '命令行导出 JSON：<code style="color:var(--teal)">/Applications/Toki.app/Contents/MacOS/Toki --dump-json --days 7</code>',
+        copy: "复制",
+        copied: "已复制",
+        footReleases: "版本下载",
+        footIssues: "问题反馈",
+        disclaimer: "Toki 是独立的开源项目，与 Anthropic、OpenAI、Google、OpenCode 无官方隶属关系。致谢 T3 Code、Magpie、LiteLLM 与 facebook/zstd。",
+        cacheSavingsPrefix: "缓存节省",
+        reasoningPrefix: "推理",
+        reqsUnit: "次请求",
+        tokensUnit: "Token"
+      }
+    };
+
+    const DEMO_DATA = {
+      1: {
+        total: "329M", cost: "$129.65", hit: "93.6%", save: "$903.03",
+        uncached: "20.35M", cread: "298.74M", cwrite: "0", output: "1.76M", reason: "598.8K",
+        slots: [
+          { label: "00:00", full: "2026/11/26, 00:00", codex: 16, agy: 12, claude: 0, cost: 11.2, reqs: 92 },
+          { label: "", full: "2026/11/26, 02:00", codex: 6, agy: 5, claude: 0, cost: 4.1, reqs: 34 },
+          { label: "04:00", full: "2026/11/26, 04:00", codex: 2, agy: 3, claude: 0, cost: 1.9, reqs: 16 },
+          { label: "", full: "2026/11/26, 06:00", codex: 4, agy: 2, claude: 0, cost: 2.3, reqs: 21 },
+          { label: "08:00", full: "2026/11/26, 08:00", codex: 12, agy: 18, claude: 4, cost: 13.8, reqs: 112 },
+          { label: "", full: "2026/11/26, 10:00", codex: 24, agy: 29, claude: 6, cost: 24.5, reqs: 198 },
+          { label: "12:00", full: "2026/11/26, 12:00", codex: 19, agy: 26, claude: 3, cost: 19.2, reqs: 164 },
+          { label: "", full: "2026/11/26, 14:00", codex: 28, agy: 31, claude: 5, cost: 26.8, reqs: 215 },
+          { label: "16:00", full: "2026/11/26, 16:00", codex: 14, agy: 19, claude: 2, cost: 13.9, reqs: 118 },
+          { label: "", full: "2026/11/26, 18:00", codex: 9, agy: 15, claude: 0, cost: 8.6, reqs: 76 },
+          { label: "20:00", full: "2026/11/26, 20:00", codex: 4, agy: 6, claude: 0, cost: 3.4, reqs: 32 }
+        ]
+      },
+      7: {
+        total: "2.3B", cost: "$1,508.06", hit: "82.9%", save: "$4,653.06",
+        uncached: "387.37M", cread: "1.9B", cwrite: "2.98M", output: "11.11M", reason: "3.67M",
+        slots: [
+          { label: "11/21", full: "2026/11/21", codex: 290.8, agy: 253.8, claude: 12.0, cost: 356.2, reqs: 3107 },
+          { label: "11/22", full: "2026/11/22", codex: 82.4, agy: 318.6, claude: 0, cost: 242.5, reqs: 1920 },
+          { label: "11/23", full: "2026/11/23", codex: 78.2, agy: 29.4, claude: 46.8, cost: 118.4, reqs: 980 },
+          { label: "11/24", full: "2026/11/24", codex: 214.0, agy: 198.5, claude: 85.2, cost: 332.9, reqs: 2640 },
+          { label: "11/25", full: "2026/11/25", codex: 146.3, agy: 132.7, claude: 21.8, cost: 196.4, reqs: 1685 },
+          { label: "11/26", full: "2026/11/26", codex: 138.9, agy: 223.1, claude: 0, cost: 238.1, reqs: 1842 },
+          { label: "11/27", full: "2026/11/27", codex: 11.4, agy: 16.8, claude: 0, cost: 23.6, reqs: 196 }
+        ]
+      },
+      30: {
+        total: "8.94B", cost: "$5,412.80", hit: "86.1%", save: "$18,920.40",
+        uncached: "1.24B", cread: "7.62B", cwrite: "14.2M", output: "48.6M", reason: "14.9M",
+        slots: [
+          { label: "10/30", full: "2026/10/30", codex: 190, agy: 160, claude: 45, cost: 245, reqs: 1820 },
+          { label: "", full: "2026/11/02", codex: 240, agy: 210, claude: 60, cost: 312, reqs: 2340 },
+          { label: "11/05", full: "2026/11/05", codex: 310, agy: 280, claude: 90, cost: 428, reqs: 3180 },
+          { label: "", full: "2026/11/08", codex: 170, agy: 195, claude: 30, cost: 238, reqs: 1760 },
+          { label: "11/11", full: "2026/11/11", codex: 260, agy: 240, claude: 75, cost: 364, reqs: 2710 },
+          { label: "", full: "2026/11/14", codex: 340, agy: 290, claude: 55, cost: 418, reqs: 3090 },
+          { label: "11/17", full: "2026/11/17", codex: 220, agy: 260, claude: 40, cost: 315, reqs: 2410 },
+          { label: "", full: "2026/11/20", codex: 285, agy: 270, claude: 65, cost: 382, reqs: 2880 },
+          { label: "11/23", full: "2026/11/23", codex: 290, agy: 254, claude: 12, cost: 356, reqs: 3107 },
+          { label: "11/27", full: "2026/11/27", codex: 140, agy: 210, claude: 20, cost: 242, reqs: 1890 }
+        ]
+      }
+    };
+
+    let lang = (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+    let win = 7;
+    let metric = "tokens";
+
+    function fmtTokens(m) {
+      if (m >= 1000) return (m / 1000).toFixed(2) + "B";
+      if (m >= 1) return (m >= 100 ? Math.round(m) : Number(m.toFixed(2))) + "M";
+      return Math.round(m * 1000) + "K";
+    }
+    function fmtTopTokens(m) {
+      if (m >= 1000) return (m / 1000).toFixed(1) + "B";
+      return Math.round(m) + "M";
+    }
+    function fmtMetricTop(s) {
+      if (metric === "tokens") return fmtTopTokens(s.codex + s.agy + s.claude);
+      if (metric === "cost") return "$" + Math.round(s.cost);
+      return s.reqs >= 1000 ? (s.reqs / 1000).toFixed(1) + "K" : String(s.reqs);
+    }
+    function slotTotal(s) {
+      if (metric === "tokens") return s.codex + s.agy + s.claude;
+      if (metric === "cost") return s.cost;
+      return s.reqs;
+    }
+
+    function applyLang() {
+      const dict = I18N[lang];
+      document.documentElement.lang = lang === "zh" ? "zh-CN" : "en";
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (dict[key] !== undefined) el.innerHTML = dict[key];
+      });
+      document.getElementById("btn-en").classList.toggle("active", lang === "en");
+      document.getElementById("btn-zh").classList.toggle("active", lang === "zh");
+      renderDemo();
+    }
+
+    function renderDemo() {
+      const d = DEMO_DATA[win];
+      const dict = I18N[lang];
+      document.getElementById("demo-total").textContent = d.total;
+      document.getElementById("demo-cost").textContent = d.cost;
+      document.getElementById("demo-hit").textContent = "⚡ " + d.hit;
+      document.getElementById("demo-save").textContent = dict.cacheSavingsPrefix + " " + d.save;
+      document.getElementById("demo-uncached").textContent = d.uncached;
+      document.getElementById("demo-cread").textContent = d.cread;
+      document.getElementById("demo-cwrite").textContent = d.cwrite;
+      document.getElementById("demo-output").textContent = d.output;
+      document.getElementById("demo-reason").textContent = dict.reasoningPrefix + " " + d.reason;
+
+      const totals = d.slots.map(slotTotal);
+      const rawMax = Math.max(...totals, 1);
+      const ceil = metric === "cost"
+        ? Math.ceil((rawMax * 1.25) / 50) * 50 || Math.ceil(rawMax * 1.3)
+        : Math.ceil((rawMax * 1.25) / 100) * 100 || Math.ceil(rawMax * 1.3);
+
+      const yGrid = document.getElementById("demo-y-grid");
+      const yFmt = (v) => {
+        if (v === 0) return metric === "cost" ? "$0" : "0";
+        if (metric === "tokens") return v >= 1000 ? (v / 1000).toFixed(1) + "B" : Math.round(v) + "M";
+        if (metric === "cost") return "$" + Math.round(v);
+        return v >= 1000 ? (v / 1000).toFixed(1) + "K" : String(Math.round(v));
+      };
+      yGrid.innerHTML = [ceil, ceil / 2, 0]
+        .map((v) => `<div class="y-line"><span>${yFmt(v)}</span></div>`)
+        .join("");
+
+      const barsEl = document.getElementById("demo-bars");
+      const cardEl = document.getElementById("demo-hover-card");
+      cardEl.classList.remove("visible");
+      barsEl.classList.remove("has-hover");
+
+      const showTopLabels = win === 7;
+      barsEl.innerHTML = d.slots.map((s, idx) => {
+        const tot = slotTotal(s);
+        const pct = Math.max(4, Math.min(92, (tot / ceil) * 100));
+        const tokSum = s.codex + s.agy + s.claude || 1;
+        const pClaude = (s.claude / tokSum) * 100;
+        const pCodex = (s.codex / tokSum) * 100;
+        const pAgy = (s.agy / tokSum) * 100;
+        return `
+          <div class="bar-col" data-idx="${idx}">
+            ${showTopLabels ? `<div class="bar-top-val">${fmtMetricTop(s)}</div>` : ""}
+            <div class="bar-stack ${win !== 7 ? "narrow" : ""}" style="height:${pct}%">
+              ${pClaude > 0 ? `<div class="bar-seg" style="height:${pClaude}%;background:var(--claude)"></div>` : ""}
+              ${pCodex > 0 ? `<div class="bar-seg" style="height:${pCodex}%;background:var(--codex)"></div>` : ""}
+              ${pAgy > 0 ? `<div class="bar-seg" style="height:${pAgy}%;background:var(--antigravity)"></div>` : ""}
+            </div>
+            ${s.label ? `<div class="bar-x">${s.label}</div>` : ""}
+          </div>
+        `;
+      }).join("");
+
+      barsEl.querySelectorAll(".bar-col").forEach((col) => {
+        col.addEventListener("mouseenter", () => {
+          const idx = Number(col.getAttribute("data-idx"));
+          const s = d.slots[idx];
+          barsEl.classList.add("has-hover");
+          barsEl.querySelectorAll(".bar-col").forEach((c) => c.classList.toggle("hovered", c === col));
+
+          const tokSum = s.codex + s.agy + s.claude;
+          const entries = [
+            { name: "Codex", color: "var(--codex)", tokens: s.codex },
+            { name: "Antigravity", color: "var(--antigravity)", tokens: s.agy },
+            { name: "Claude Code", color: "var(--claude)", tokens: s.claude }
+          ].filter((e) => e.tokens > 0).sort((a, b) => b.tokens - a.tokens);
+
+          const heroMain = metric === "tokens"
+            ? `<span class="hc-total">${fmtTokens(tokSum)}</span><span class="hc-unit">${dict.tokensUnit}</span>`
+            : metric === "cost"
+              ? `<span class="hc-total">$${s.cost.toFixed(2)}</span>`
+              : `<span class="hc-total">${s.reqs.toLocaleString()}</span><span class="hc-unit">${dict.reqsUnit}</span>`;
+          const heroSec = metric === "tokens"
+            ? `$${s.cost.toFixed(2)}`
+            : fmtTokens(tokSum);
+
+          const rowVal = (e) => {
+            if (metric === "tokens") return fmtTokens(e.tokens);
+            const share = tokSum > 0 ? e.tokens / tokSum : 0;
+            if (metric === "cost") return "$" + (s.cost * share).toFixed(2);
+            return Math.round(s.reqs * share).toLocaleString();
+          };
+
+          cardEl.innerHTML = `
+            <div class="hc-top">
+              <span>${s.full}</span>
+              <span class="hc-pill">${s.reqs.toLocaleString()} ${dict.reqsUnit}</span>
+            </div>
+            <div class="hc-hero">
+              <div>${heroMain}</div>
+              <span class="hc-sec">${heroSec}</span>
+            </div>
+            ${entries.map((e) => `
+              <div class="hc-row">
+                <span class="hc-left"><span class="hc-dot" style="background:${e.color}"></span>${e.name}</span>
+                <strong>${rowVal(e)}</strong>
+              </div>
+            `).join("")}
+          `;
+
+          const boxRect = document.getElementById("demo-chart-box").getBoundingClientRect();
+          const colRect = col.getBoundingClientRect();
+          const barCenter = colRect.left - boxRect.left + colRect.width / 2;
+          const cardW = 204;
+          const onLeft = barCenter > boxRect.width / 2;
+          let left = onLeft ? barCenter - cardW - 14 : barCenter + 14;
+          left = Math.max(4, Math.min(left, boxRect.width - cardW - 4));
+          cardEl.style.left = left + "px";
+          cardEl.classList.add("visible");
+        });
+      });
+
+      document.getElementById("demo-chart-box").onmouseleave = () => {
+        barsEl.classList.remove("has-hover");
+        barsEl.querySelectorAll(".bar-col").forEach((c) => c.classList.remove("hovered"));
+        cardEl.classList.remove("visible");
+      };
+    }
+
+    document.getElementById("btn-en").addEventListener("click", () => { lang = "en"; applyLang(); });
+    document.getElementById("btn-zh").addEventListener("click", () => { lang = "zh"; applyLang(); });
+
+    document.getElementById("demo-window-seg").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-win]");
+      if (!btn) return;
+      win = Number(btn.getAttribute("data-win"));
+      document.querySelectorAll("#demo-window-seg button").forEach((b) => b.classList.toggle("active", b === btn));
+      renderDemo();
+    });
+
+    document.getElementById("demo-metric-tabs").addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-metric]");
+      if (!btn) return;
+      metric = btn.getAttribute("data-metric");
+      document.querySelectorAll("#demo-metric-tabs button").forEach((b) => b.classList.toggle("active", b === btn));
+      renderDemo();
+    });
+
+    document.querySelectorAll(".copy-btn").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const targetId = btn.getAttribute("data-copy-target");
+        const text = targetId
+          ? document.getElementById(targetId).textContent
+          : btn.getAttribute("data-copy");
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.textContent = I18N[lang].copied;
+          setTimeout(() => { btn.textContent = I18N[lang].copy; }, 1600);
+        } catch {}
+      });
+    });
+
+    // Dynamically keep Download links synced with the latest GitHub Release
+    fetch("https://api.github.com/repos/wwzhuang01/toki/releases/latest")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((rel) => {
+        if (!rel || !rel.tag_name) return;
+        const dmg = (rel.assets || []).find((a) => a.name && a.name.endsWith(".dmg"));
+        if (dmg && dmg.browser_download_url) {
+          document.getElementById("hero-download").href = dmg.browser_download_url;
+          document.getElementById("nav-download").href = dmg.browser_download_url;
+        }
+        const mb = dmg ? ` · ${(dmg.size / 1048576).toFixed(1)} MB` : "";
+        document.getElementById("version-badge").textContent = `${rel.tag_name} · macOS 14+ · Universal Binary${mb}`;
+      })
+      .catch(() => {});
+
+    applyLang();
+  </script>
+</body>
+</html>

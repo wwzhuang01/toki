@@ -3,6 +3,7 @@
   <h1>Toki</h1>
   <p><strong>轻量、100% 纯原生 Swift 打造的 macOS 菜单栏本地 AI Token 用量仪表盘</strong></p>
   <p>
+    <a href="https://wwzhuang01.github.io/toki/"><strong>项目主页</strong></a> ·
     <a href="README.md">English</a> ·
     <a href="#功能亮点">功能亮点</a> ·
     <a href="#支持的工具">支持的工具</a> ·
