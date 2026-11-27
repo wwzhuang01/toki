@@ -50,6 +50,9 @@ fi
 if [[ -n "${TOKI_VERSION:-}" ]]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${TOKI_VERSION}" "$app/Contents/Info.plist"
 fi
+if [[ -n "${TOKI_BUILD_NUMBER:-}" ]]; then
+    /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${TOKI_BUILD_NUMBER}" "$app/Contents/Info.plist"
+fi
 
 zstd_version=1.5.7
 zstd_sha256=37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3
@@ -84,12 +87,12 @@ else
 fi
 cp "$zstd_source/LICENSE" "$zstd_source/COPYING" "$app/Contents/Resources/"
 
-sign_identity="${TOKI_CODESIGN_IDENTITY:--}"
+sign_identity="${TOKI_CODESIGN_IDENTITY:-${APPLE_SIGNING_IDENTITY:--}}"
 codesign_args=(--force --sign "$sign_identity")
 if [[ "$sign_identity" != "-" ]]; then
     codesign_args+=(--options runtime --timestamp)
 fi
-codesign "${codesign_args[@]}" "$zstd_library"
+codesign "${codesign_args[@]}" "$zstd_library" >&2
 
 if [[ -n "$icon" ]]; then
     iconset="$scratch/AppIcon.iconset"
@@ -104,8 +107,30 @@ if [[ -n "$icon" ]]; then
     /usr/libexec/PlistBuddy -c 'Add :CFBundleIconFile string AppIcon.icns' "$app/Contents/Info.plist"
 fi
 
-codesign "${codesign_args[@]}" "$app"
-codesign --verify --deep --strict "$app"
+codesign "${codesign_args[@]}" "$app" >&2
+codesign --verify --deep --strict "$app" >&2
+if [[ "$sign_identity" != "-" ]]; then
+    details="$(codesign -dvvv "$app" 2>&1)"
+    if ! grep -q '^CodeDirectory .*flags=.*(runtime)' <<<"$details"; then
+        printf 'Error: Hardened Runtime is not enabled on %s\n' "$app" >&2
+        printf '%s\n' "$details" >&2
+        exit 1
+    fi
+    if ! grep -q '^Timestamp=' <<<"$details"; then
+        printf 'Error: Secure timestamp is missing on %s\n' "$app" >&2
+        printf '%s\n' "$details" >&2
+        exit 1
+    fi
+    team_id="$(sed -n 's/^TeamIdentifier=//p' <<<"$details" | head -n 1)"
+    if [[ -z "$team_id" || "$team_id" == "not set" ]]; then
+        printf 'Error: TeamIdentifier is missing on %s\n' "$app" >&2
+        exit 1
+    fi
+    if [[ -n "${TOKI_APPLE_TEAM_ID:-}" && "$team_id" != "$TOKI_APPLE_TEAM_ID" ]]; then
+        printf 'Error: Expected TeamIdentifier=%s, got %s on %s\n' "$TOKI_APPLE_TEAM_ID" "$team_id" "$app" >&2
+        exit 1
+    fi
+fi
 rm -rf "$root/dist/Toki.app"
 mv "$app" "$root/dist/Toki.app"
 printf '%s\n' "$root/dist/Toki.app"

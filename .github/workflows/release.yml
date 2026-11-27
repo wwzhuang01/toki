@@ -1,59 +1,217 @@
 name: Release
 
+# Manual macOS Universal release with Apple Developer ID signing and notarization.
+# Expected variables/secrets (in the `release` GitHub Environment, or repository-level):
+#   Variables: APPLE_SIGNING_IDENTITY, APPLE_API_ISSUER, APPLE_API_KEY
+#   Secrets:   APPLE_API_KEY_P8, APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v1.0.0)"
+        description: "Release tag (e.g. v1.0.2)"
         required: true
         type: string
+      build_only:
+        description: "Build, sign, and notarize DMG as an Actions artifact without publishing a GitHub Release"
+        required: false
+        type: boolean
+        default: false
+      draft:
+        description: "Create the GitHub Release as a draft (ignored when build_only is true)"
+        required: false
+        type: boolean
+        default: false
+      prerelease:
+        description: "Mark the GitHub Release as a prerelease (ignored when build_only is true)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    name: Build Universal DMG & Publish Release
+    name: Build, Sign & Notarize Universal DMG
     runs-on: macos-15
+    timeout-minutes: 45
+    environment: release
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Resolve version
+      - name: Validate release tag and version
         id: version
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          BUILD_ONLY: ${{ inputs.build_only }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
-            TAG="${{ inputs.tag }}"
+          TAG="${INPUT_TAG//[[:space:]]/}"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error title=Invalid release tag::Tag '${INPUT_TAG}' must match v<major>.<minor>.<patch> (e.g. v1.0.2)."
+            exit 1
+          fi
+          if [[ "$BUILD_ONLY" != "true" ]]; then
+            if release_state="$(gh release view "$TAG" --json isDraft --jq 'if .isDraft then "draft" else "published" end' 2>/dev/null)"; then
+              if [[ "$release_state" == "published" ]]; then
+                echo "::error title=Release already exists::GitHub Release '${TAG}' is already published. Bump the version or run with build_only=true."
+                exit 1
+              fi
+            fi
           fi
           VERSION="${TAG#v}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Require Apple signing and notarization configuration
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ vars.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ vars.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          missing=0
+          for name in APPLE_SIGNING_IDENTITY APPLE_API_ISSUER APPLE_API_KEY; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing variable::${name} is not set. Configure it in the 'release' GitHub Environment (or repository variables)."
+              missing=$((missing + 1))
+            fi
+          done
+          for name in APPLE_API_KEY_P8 APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error title=Missing secret::${name} is not set. Configure it in the 'release' GitHub Environment (or repository secrets)."
+              missing=$((missing + 1))
+            fi
+          done
+          if ((missing > 0)); then
+            exit 1
+          fi
+
       - name: Run unit tests
         run: swift test
 
-      - name: Build Universal DMG
+      - name: Import Developer ID certificate and stage Notary API key
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY: ${{ vars.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          keychain_password="$(uuidgen)"
+          certificate="$RUNNER_TEMP/developer-id.p12"
+          api_key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8"
+
+          (
+            umask 077
+            printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$certificate"
+            printf '%s' "$APPLE_API_KEY_P8" > "$api_key_path"
+          )
+
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -k "$keychain" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$certificate"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$keychain_password" "$keychain" > /dev/null
+          existing_keychains=()
+          while IFS= read -r line; do
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%\"}"
+            line="${line#\"}"
+            [[ -n "$line" ]] && existing_keychains+=("$line")
+          done < <(security list-keychains -d user)
+          security list-keychains -d user -s "$keychain" "${existing_keychains[@]}"
+
+          if ! security find-identity -v -p codesigning "$keychain" | grep -Fq "$APPLE_SIGNING_IDENTITY"; then
+            echo "::error title=Signing identity not found::APPLE_CERTIFICATE does not contain the identity named by APPLE_SIGNING_IDENTITY."
+            security find-identity -v -p codesigning "$keychain" || true
+            exit 1
+          fi
+
+          echo "TOKI_RELEASE_KEYCHAIN=$keychain" >> "$GITHUB_ENV"
+          echo "APPLE_API_KEY_PATH=$api_key_path" >> "$GITHUB_ENV"
+
+      - name: Build, sign & notarize Universal DMG
         env:
           TOKI_VERSION: ${{ steps.version.outputs.version }}
+          TOKI_BUILD_NUMBER: ${{ github.run_number }}
           TOKI_ARCHS: "arm64 x86_64"
+          TOKI_CODESIGN_IDENTITY: ${{ vars.APPLE_SIGNING_IDENTITY }}
+          TOKI_NOTARIZE: "1"
+          APPLE_API_ISSUER: ${{ vars.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ vars.APPLE_API_KEY }}
         run: |
           ./scripts/package-dmg.sh --icon ./assets/AppIcon.png
-          lipo -info dist/Toki.app/Contents/MacOS/Toki
-          lipo -info dist/Toki.app/Contents/Frameworks/libzstd.1.dylib
-          codesign --verify --deep --strict dist/Toki.app
+          lipo -info dist/Toki.app/Contents/MacOS/Toki | grep -q "arm64"
+          lipo -info dist/Toki.app/Contents/MacOS/Toki | grep -q "x86_64"
+          lipo -info dist/Toki.app/Contents/Frameworks/libzstd.1.dylib | grep -q "arm64"
+          lipo -info dist/Toki.app/Contents/Frameworks/libzstd.1.dylib | grep -q "x86_64"
+          codesign --verify --deep --strict --verbose=2 dist/Toki.app
+          xcrun stapler validate -v dist/Toki.app
+          spctl --assess --type execute -vv dist/Toki.app
           cp dist/Toki.dmg "dist/Toki-${TOKI_VERSION}-universal.dmg"
+          xcrun stapler validate -v "dist/Toki-${TOKI_VERSION}-universal.dmg"
+          spctl --assess --type open --context context:primary-signature -vv "dist/Toki-${TOKI_VERSION}-universal.dmg"
           (cd dist && shasum -a 256 "Toki-${TOKI_VERSION}-universal.dmg" > "Toki-${TOKI_VERSION}-universal.dmg.sha256")
+          cat "dist/Toki-${TOKI_VERSION}-universal.dmg.sha256"
+
+      - name: Upload signed & notarized DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: toki-${{ steps.version.outputs.tag }}-universal-dmg
+          path: |
+            dist/Toki-${{ steps.version.outputs.version }}-universal.dmg
+            dist/Toki-${{ steps.version.outputs.version }}-universal.dmg.sha256
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Publish GitHub Release
+        if: ${{ !inputs.build_only }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: Toki ${{ steps.version.outputs.tag }}
+          draft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
           generate_release_notes: true
           files: |
             dist/Toki-${{ steps.version.outputs.version }}-universal.dmg
             dist/Toki-${{ steps.version.outputs.version }}-universal.dmg.sha256
+
+      - name: Write release summary
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BUILD_ONLY: ${{ inputs.build_only }}
+          DRAFT: ${{ inputs.draft }}
+        run: |
+          {
+            echo "### Toki ${TAG}"
+            if [[ "$BUILD_ONLY" == "true" ]]; then
+              echo "- **Mode**: \`build_only\` (signed & notarized artifact uploaded; no GitHub Release created)"
+            elif [[ "$DRAFT" == "true" ]]; then
+              echo "- **Mode**: Draft GitHub Release published"
+            else
+              echo "- **Mode**: GitHub Release published"
+            fi
+            echo "- **Notarization**: Signed with Developer ID, notarized by Apple, and stapled to both \`Toki.app\` and \`.dmg\`"
+            echo "- **SHA-256**: \`$(cat "dist/Toki-${VERSION}-universal.dmg.sha256")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Clean up temporary keychain and API key
+        if: always()
+        run: |
+          rm -f "${APPLE_API_KEY_PATH:-}" "$RUNNER_TEMP/developer-id.p12"
+          if [[ -n "${TOKI_RELEASE_KEYCHAIN:-}" ]]; then
+            security delete-keychain "$TOKI_RELEASE_KEYCHAIN" || true
+          fi

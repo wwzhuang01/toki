@@ -57,15 +57,11 @@ Toki requires **no login or API keys**. It reads local usage history directly fr
 
 ## Installation
 
-1. Download the latest Universal `Toki-*-universal.dmg` from [GitHub Releases](https://github.com/wwzhuang01/toki/releases/latest).
+1. Download the latest Universal `Toki-*-universal.dmg` from [GitHub Releases](https://github.com/wwzhuang01/toki/releases/latest) (you can optionally verify it with `shasum -a 256 -c Toki-*-universal.dmg.sha256`).
 2. Open the `.dmg` and drag **Toki.app** into **Applications**.
-3. **First-time Gatekeeper note**: Releases built without an Apple Developer ID certificate are ad-hoc signed. If macOS says *"Toki cannot be opened"* or *"is damaged"*, run once in Terminal:
+3. Launch **Toki** directly from Spotlight or `/Applications` — official releases are signed with an Apple Developer ID certificate and notarized by Apple, so macOS Gatekeeper accepts them out of the box.
 
-```sh
-xattr -dr com.apple.quarantine /Applications/Toki.app
-```
-
-Then launch **Toki** from Spotlight or `/Applications`.
+> **Note for older releases (`v1.0.0` / `v1.0.1`) or ad-hoc source builds**: Unnotarized builds downloaded from a browser may trigger a Gatekeeper warning on first launch; clear the quarantine attribute once with `xattr -dr com.apple.quarantine /Applications/Toki.app`.
 
 ## Configuration
 
@@ -122,12 +118,15 @@ swift build -c release
 Useful build environment variables:
 - `TOKI_ARCHS="arm64"` — build single-arch locally for faster iteration (defaults to `"arm64 x86_64"`).
 - `TOKI_BUNDLE_ID="io.github.yourname.toki"` — customize `CFBundleIdentifier`.
+- `TOKI_VERSION="1.0.2"` / `TOKI_BUILD_NUMBER="3"` — override `CFBundleShortVersionString` and `CFBundleVersion`.
+- `TOKI_CODESIGN_IDENTITY="Developer ID Application: ..."` (or `APPLE_SIGNING_IDENTITY`) — sign with Hardened Runtime and a secure timestamp instead of ad-hoc (`-`).
+- `TOKI_NOTARIZE=1` — submit `Toki.app` and `Toki.dmg` to Apple Notary, staple tickets, and verify with `spctl` (requires `APPLE_API_ISSUER`, `APPLE_API_KEY`, and `APPLE_API_KEY_PATH`).
 - `TOKI_ZSTD_ARCHIVE=/path/to/zstd-1.5.7.tar.gz` — offline packaging with a pre-downloaded checksum-verified zstd archive.
 - `TOKI_DATA_HOME=/path/to/home` — run `--dump-json` against a fixture home directory.
 
 ## Roadmap
 
-- [ ] Apple Developer ID signing & notarization
+- [x] Apple Developer ID signing & notarization
 - [ ] Homebrew Cask (`brew install --cask toki`)
 - [ ] Sparkle in-app auto-updates
 - [ ] Daily token / budget threshold alerts

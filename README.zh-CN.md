@@ -57,15 +57,11 @@
 
 ## 安装方式
 
-1. 前往 [GitHub Releases](https://github.com/wwzhuang01/toki/releases/latest) 下载最新的通用安装包 `Toki-*-universal.dmg`（同时支持 Apple Silicon 与 Intel Mac）。
+1. 前往 [GitHub Releases](https://github.com/wwzhuang01/toki/releases/latest) 下载最新的通用安装包 `Toki-*-universal.dmg`（同时支持 Apple Silicon 与 Intel Mac，可选用 `shasum -a 256 -c Toki-*-universal.dmg.sha256` 校验完整性）。
 2. 双击打开 `.dmg`，将 **Toki.app** 拖入 `Applications`（应用程序）目录。
-3. **首次打开解除 Gatekeeper 拦截**：由于开源版本暂未购买 Apple Developer ID 公证，首次打开若提示「无法验证开发者」或「已损坏」，请在终端执行一次：
+3. 直接从启动台 / Spotlight 打开 **Toki** 即可——正式发布版已使用 Apple Developer ID 签名并通过 Apple 公证（Notarized），macOS Gatekeeper 开箱放行，无需手动解除隔离。
 
-```sh
-xattr -dr com.apple.quarantine /Applications/Toki.app
-```
-
-随后从启动台 / Spotlight 打开 **Toki** 即可。
+> **说明（仅限旧版 `v1.0.0` / `v1.0.1` 或自行 ad-hoc 编译的包）**：未公证的构建首次打开若提示「无法验证开发者」，可在终端执行一次 `xattr -dr com.apple.quarantine /Applications/Toki.app`。
 
 ## 独立配置
 
@@ -122,12 +118,15 @@ swift build -c release
 常用构建环境变量：
 - `TOKI_ARCHS="arm64"`：本地开发仅编单架构以加快构建速度（默认 `"arm64 x86_64"`）。
 - `TOKI_BUNDLE_ID="io.github.yourname.toki"`：自定义 Bundle Identifier。
+- `TOKI_VERSION="1.0.2"` / `TOKI_BUILD_NUMBER="3"`：覆盖 `CFBundleShortVersionString` 与 `CFBundleVersion`。
+- `TOKI_CODESIGN_IDENTITY="Developer ID Application: ..."`（或 `APPLE_SIGNING_IDENTITY`）：使用 Developer ID 正式签名并启用 Hardened Runtime 与时间戳（默认 `-` 自签名）。
+- `TOKI_NOTARIZE=1`：对 `Toki.app` 与 `Toki.dmg` 执行 Apple 公证、装订票据并用 `spctl` 验签（需配置 `APPLE_API_ISSUER`、`APPLE_API_KEY`、`APPLE_API_KEY_PATH`）。
 - `TOKI_ZSTD_ARCHIVE=/path/to/zstd-1.5.7.tar.gz`：离线打包时指定本地 zstd 源码包。
 - `TOKI_DATA_HOME=/path/to/home`：命令行 `--dump-json` 指定自定义模拟主目录。
 
 ## Roadmap
 
-- [ ] Apple Developer ID 签名与公证
+- [x] Apple Developer ID 签名与公证
 - [ ] Homebrew Cask（`brew install --cask toki`）
 - [ ] Sparkle 应用内自动更新
 - [ ] 每日 Token / 费用上限提醒

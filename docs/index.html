@@ -1182,12 +1182,8 @@
             <div class="step">
               <div class="step-num">2</div>
               <div>
-                <strong data-i18n="s2Title">First-launch Gatekeeper note</strong>
-                <p data-i18n="s2Desc">Open-source builds are ad-hoc signed. If macOS blocks the first launch, run once in Terminal:</p>
-                <div class="code-wrap">
-                  <button class="copy-btn" type="button" data-copy="xattr -dr com.apple.quarantine /Applications/Toki.app" data-i18n="copy">Copy</button>
-                  <pre><code>xattr -dr com.apple.quarantine /Applications/Toki.app</code></pre>
-                </div>
+                <strong data-i18n="s2Title">Signed &amp; Apple Notarized</strong>
+                <p data-i18n="s2Desc">Official releases are signed with an Apple Developer ID certificate and notarized by Apple — ready to open straight from /Applications with no Terminal workarounds.</p>
               </div>
             </div>
             <div class="step">
@@ -1316,8 +1312,8 @@
         instBoxTitle: "Install on macOS 14+",
         s1Title: "Download Universal DMG",
         s1Desc: "Grab the latest release for Apple Silicon & Intel Macs and drag Toki.app into /Applications.",
-        s2Title: "First-launch Gatekeeper note",
-        s2Desc: "Open-source builds are ad-hoc signed. If macOS blocks the first launch, run once in Terminal:",
+        s2Title: "Signed & Apple Notarized",
+        s2Desc: "Official releases are signed with an Apple Developer ID certificate and notarized by Apple — ready to open straight from /Applications with no Terminal workarounds.",
         s3Title: "Launch & enable Launch at Login",
         s3Desc: "Open Toki from Spotlight, click the menu bar meter, and customize format, currency, and language in Settings.",
         cfgBoxTitle: "Optional ~/.config/toki/config.json",
@@ -1388,8 +1384,8 @@
         instBoxTitle: "在 macOS 14+ 上安装",
         s1Title: "下载双架构通用 DMG",
         s1Desc: "下载最新 Toki Universal DMG（支持 M 系列与 Intel Mac），将 Toki.app 拖入应用程序目录。",
-        s2Title: "首次打开解除 Gatekeeper 拦截",
-        s2Desc: "开源版本采用自签名构建，首次打开若提示「无法验证开发者」，在终端执行一次：",
+        s2Title: "Apple 官方签名与公证",
+        s2Desc: "正式发布版均通过 Apple Developer ID 签名并完成 Apple 公证，拖入应用程序目录即可直接打开，无需终端解除拦截。",
         s3Title: "启动并开启开机自启",
         s3Desc: "从聚焦搜索打开 Toki，点击顶部菜单栏数字即可查看明细，并可在设置中切换显示格式、币种与语言。",
         cfgBoxTitle: "可选独立配置 ~/.config/toki/config.json",
